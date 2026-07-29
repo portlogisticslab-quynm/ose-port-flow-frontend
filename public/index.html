@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Port Flow Simulation – 3-Stage Serial System</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<div class="app">
+
+  <header class="header">
+    <h1>Port Flow Simulation – Crane → Forklift/AGV → Dock</h1>
+
+    <p>
+      Three-stage serial discrete-event simulation with Poisson
+      arrivals, exponential service times, parallel servers,
+      bottleneck analysis, animations, and CSV export.
+    </p>
+    <div id="backendBadge" class="backend-badge checking">Backend: checking…</div>
+  </header>
+
+  <main class="layout">
+
+    <aside class="panel controls">
+
+      <h2>Simulation inputs</h2>
+
+      <div class="two-col">
+
+        <div class="form-row">
+          <label for="simulationHours">
+            Simulation time (hours)
+          </label>
+
+          <input
+            id="simulationHours"
+            type="number"
+            value="4"
+            min="0.01"
+            step="0.25"
+          >
+        </div>
+
+        <div class="form-row">
+          <label for="arrivalRate">
+            Arrival rate λ (containers/hour)
+          </label>
+
+          <input
+            id="arrivalRate"
+            type="number"
+            value="14"
+            min="0.0001"
+            step="0.1"
+          >
+        </div>
+
+      </div>
+
+      <div class="form-row">
+        <label for="seedInput">
+          Random seed
+        </label>
+
+        <input
+          id="seedInput"
+          type="text"
+          value=""
+          placeholder="Blank = random"
+        >
+      </div>
+
+      <div class="stage-grid">
+
+        <section class="stage-card">
+          <h3>Stage 1 – Crane</h3>
+
+          <div class="form-row">
+            <label for="stage1Servers">
+              Number of cranes
+            </label>
+
+            <input
+              id="stage1Servers"
+              type="number"
+              value="1"
+              min="1"
+              step="1"
+            >
+          </div>
+
+          <div class="form-row">
+            <label for="stage1Rate">
+              Rate per crane
+            </label>
+
+            <input
+              id="stage1Rate"
+              type="number"
+              value="18"
+              min="0.0001"
+              step="0.1"
+            >
+          </div>
+        </section>
+
+        <section class="stage-card">
+          <h3>Stage 2 – Forklift/AGV</h3>
+
+          <div class="form-row">
+            <label for="stage2Servers">
+              Number of vehicles
+            </label>
+
+            <input
+              id="stage2Servers"
+              type="number"
+              value="2"
+              min="1"
+              step="1"
+            >
+          </div>
+
+          <div class="form-row">
+            <label for="stage2Rate">
+              Rate per vehicle
+            </label>
+
+            <input
+              id="stage2Rate"
+              type="number"
+              value="12"
+              min="0.0001"
+              step="0.1"
+            >
+          </div>
+        </section>
+
+        <section class="stage-card">
+          <h3>Stage 3 – Dock</h3>
+
+          <div class="form-row">
+            <label for="stage3Servers">
+              Number of docks
+            </label>
+
+            <input
+              id="stage3Servers"
+              type="number"
+              value="2"
+              min="1"
+              step="1"
+            >
+          </div>
+
+          <div class="form-row">
+            <label for="stage3Rate">
+              Rate per dock
+            </label>
+
+            <input
+              id="stage3Rate"
+              type="number"
+              value="10"
+              min="0.0001"
+              step="0.1"
+            >
+          </div>
+        </section>
+
+      </div>
+
+      <div class="button-grid">
+
+        <button
+          id="runButton"
+          class="primary wide"
+          type="button"
+        >
+          Run Simulation
+        </button>
+
+        <button
+          id="exportButton"
+          class="success"
+          type="button"
+          disabled
+        >
+          Export CSV Logs
+        </button>
+
+        <button
+          id="openTimeSeriesButton"
+          type="button"
+          disabled
+        >
+          Open Time-Series Tab
+        </button>
+
+      </div>
+
+      <div id="status" class="status">
+        Status: Ready.
+      </div>
+
+      <div class="summary-wrap">
+        <table id="summaryTable">
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Servers</th>
+              <th>Rate/server</th>
+              <th>Avg wait</th>
+              <th>P95 wait</th>
+              <th>Max Q</th>
+              <th>Util.</th>
+              <th>Throughput/h</th>
+            </tr>
+          </thead>
+
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="managementNote" class="management-note">
+        Run the simulation to see the bottleneck and management summary.
+      </div>
+
+      <p class="note">
+        Rates are containers per hour. Waiting-time outputs are in
+        minutes. Utilization is clipped to the simulation horizon.
+      </p>
+
+    </aside>
+
+    <section class="panel workspace">
+
+      <div class="tabs">
+
+        <button
+          class="tab-button active"
+          data-tab="chartsTab"
+          type="button"
+        >
+          Charts
+        </button>
+
+        <button
+          class="tab-button"
+          data-tab="histogramTab"
+          type="button"
+        >
+          Histogram
+        </button>
+
+        <button
+          class="tab-button"
+          data-tab="flowTab"
+          type="button"
+        >
+          Flow Animation
+        </button>
+
+        <button
+          class="tab-button"
+          data-tab="timeSeriesTab"
+          type="button"
+        >
+          Time-Series Animation
+        </button>
+
+      </div>
+
+      <div id="chartsTab" class="tab-content active">
+
+        <div class="chart-grid">
+
+          <article class="chart-panel">
+            <div class="chart-title">
+              Average and P95 waiting time
+            </div>
+
+            <div class="chart-wrap">
+              <canvas id="waitChart"></canvas>
+            </div>
+          </article>
+
+          <article class="chart-panel">
+            <div class="chart-title">
+              Utilization by stage
+            </div>
+
+            <div class="chart-wrap">
+              <canvas id="utilizationChart"></canvas>
+            </div>
+          </article>
+
+        </div>
+
+      </div>
+
+      <div id="histogramTab" class="tab-content">
+
+        <div class="hist-controls">
+
+          <select id="histogramStageSelect" disabled>
+            <option value="all">
+              All stages – common bins
+            </option>
+            <option value="stage1">
+              Stage 1 – Crane
+            </option>
+            <option value="stage2">
+              Stage 2 – Forklift/AGV
+            </option>
+            <option value="stage3">
+              Stage 3 – Dock
+            </option>
+          </select>
+
+          <button
+            id="refreshHistogramButton"
+            type="button"
+            disabled
+          >
+            Refresh
+          </button>
+
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="histogramChart"></canvas>
+        </div>
+
+      </div>
+
+      <div id="flowTab" class="tab-content">
+
+        <div class="animation-controls">
+
+          <button id="flowPlayButton" type="button" disabled>
+            Play
+          </button>
+
+          <button id="flowResetButton" type="button" disabled>
+            Reset
+          </button>
+
+          <button id="flowStepButton" type="button" disabled>
+            Step
+          </button>
+
+          <div class="speed-box">
+            <span>Speed</span>
+
+            <input
+              id="flowSpeed"
+              type="range"
+              min="0.25"
+              max="4"
+              step="0.25"
+              value="1"
+              disabled
+            >
+
+            <strong id="flowSpeedValue">1.00×</strong>
+          </div>
+
+          <div id="flowInfo" class="anim-info">
+            Run simulation first
+          </div>
+
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas
+            id="flowCanvas"
+            width="1400"
+            height="560"
+          ></canvas>
+        </div>
+
+      </div>
+
+      <div id="timeSeriesTab" class="tab-content">
+
+        <div class="animation-controls">
+
+          <select id="timeSeriesView" disabled>
+            <option value="stage1">
+              Stage 1 – Crane
+            </option>
+            <option value="stage2">
+              Stage 2 – Forklift/AGV
+            </option>
+            <option value="stage3">
+              Stage 3 – Dock
+            </option>
+            <option value="overall">
+              Overall system
+            </option>
+          </select>
+
+          <button id="seriesPlayButton" type="button" disabled>
+            Play
+          </button>
+
+          <button id="seriesResetButton" type="button" disabled>
+            Reset
+          </button>
+
+          <button id="seriesStepButton" type="button" disabled>
+            Step
+          </button>
+
+          <div class="speed-box">
+            <span>Speed</span>
+
+            <input
+              id="seriesSpeed"
+              type="range"
+              min="0.25"
+              max="4"
+              step="0.25"
+              value="1"
+              disabled
+            >
+
+            <strong id="seriesSpeedValue">1.00×</strong>
+          </div>
+
+          <div id="seriesInfo" class="anim-info">
+            Run simulation first
+          </div>
+
+        </div>
+
+        <div class="time-series-grid">
+
+          <div class="chart-wrap">
+            <canvas id="timeSeriesChart"></canvas>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <div class="footer">
+    ©2026 Dr. Nguyen Minh Quy –
+    info@portlogistics.vn –
+    https://portlogistics.vn/
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
