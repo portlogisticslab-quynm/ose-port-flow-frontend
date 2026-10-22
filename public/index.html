@@ -8,7 +8,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=202610221705">
 </head>
 
 <body>
@@ -464,8 +464,16 @@
 
 </div>
 
-<script src="config.js"></script>
-<script src="app.js"></script>
+<div id="oseServer" style="position:fixed;right:12px;bottom:12px;z-index:9999;display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(15,23,42,.88);color:#e2e8f0;font:12px/1.2 system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)">
+  <span id="oseServerDot" style="width:8px;height:8px;border-radius:50%;background:#94a3b8"></span>
+  <span id="oseServerText">&#272;ang k&#7871;t n&#7889;i&#8230;</span>
+  <select id="oseServerSelect" title="Ch&#7885;n m&#225;y ch&#7911; t&#237;nh to&#225;n" style="font:inherit;background:#0f172a;color:inherit;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:1px 4px">
+    <option value="auto">T&#7921; &#273;&#7897;ng</option>
+    <option value="home">Home server</option>
+    <option value="render">Render</option>
+  </select>
+</div><script src="config.js?v=202610221705"></script>
+<script src="app.js?v=202610221705"></script>
 
 </body>
 </html>

@@ -294,8 +294,7 @@ runButton.addEventListener("click", async () => {
 
     const inputs = parseInputs();
 
-    const response = await fetch(
-      `${window.PORTFLOW_API_BASE}/api/simulate`,
+    const response = await window.oseFetch("/api/simulate",
       {
         method: "POST",
         headers: {
@@ -2397,8 +2396,7 @@ function timestamp() {
 
 async function checkBackendHealth() {
   try {
-    const response = await fetch(
-      `${window.PORTFLOW_API_BASE}/api/health`,
+    const response = await window.oseFetch("/api/health",
       { cache: "no-store" }
     );
 
@@ -2444,3 +2442,29 @@ function drawInitialFlow() {
     flowCanvas.height / 2
   );
 }
+
+/* OSE server selector: Auto / Home / Render (config.js reads ?api=) */
+(async function initServerSelect() {
+  const sel = document.getElementById('oseServerSelect');
+  const dot = document.getElementById('oseServerDot');
+  const txt = document.getElementById('oseServerText');
+  if (!sel || !window.oseFetch) return;
+  const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+  if (local) sel.hidden = true;
+  let pinned = new URLSearchParams(location.search).get('api');
+  try { pinned = pinned || localStorage.getItem('ose_api'); } catch (e) {}
+  sel.value = ['home', 'render'].includes(pinned) ? pinned : 'auto';
+  sel.onchange = () => { const u = new URL(location.href); u.searchParams.set('api', sel.value); location.href = u.toString(); };
+  const t0 = performance.now();
+  try {
+    const res = await window.oseFetch('/api/health', { cache: 'no-store' });
+    const h = await res.json();
+    const base = String(window.OSE_API_BASE || '');
+    const name = base.includes('onrender.com') ? 'Render' : (local ? 'C\u1ee5c b\u1ed9' : 'Home server');
+    dot.style.background = '#22c55e';
+    txt.textContent = name + ' \u00b7 v' + (h.version || '?') + ' \u00b7 ' + Math.round(performance.now() - t0) + ' ms';
+  } catch (e) {
+    dot.style.background = '#ef4444';
+    txt.textContent = 'm\u1ea5t k\u1ebft n\u1ed1i';
+  }
+})();
